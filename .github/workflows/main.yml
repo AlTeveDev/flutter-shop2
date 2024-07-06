@@ -1,0 +1,66 @@
+name: Build and distribute
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: cedvdb/action-flutter-build-web@v1
+        with:
+          build-cmd: flutter build web --release --base-href /flutter_quiz/
+          working-directory: ./
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  build-apple:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: AlTeveDev/action-flutter-build-ios@v1
+        with:
+          # always use --export-options-plist=ios/GithubActionsExportOptions.plist
+          build-cmd: flutter build ipa --release --no-codesign
+          working-directory: ./
+          flutterfire: false
+
+      - run: mkdir Payload
+        working-directory: build/ios/archive/Runner.xcarchive/Products/Applications
+
+      - run: mv Runner.app/ Payload
+        working-directory: build/ios/archive/Runner.xcarchive/Products/Applications
+
+      - name: Zip output
+        run: zip -qq -r -9 FlutterIpaExport.ipa Payload
+        working-directory: build/ios/archive/Runner.xcarchive/Products/Applications
+
+      - name: Archive IPA
+        uses: actions/upload-artifact@v2
+        with:
+          name: release-ipa
+          # Try running the build locally with the build command to be sure of this path
+          path: build/ios/
+
+
+
+          
